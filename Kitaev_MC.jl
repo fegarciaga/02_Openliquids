@@ -202,7 +202,7 @@ NTRAJ = 1000
 A = readdlm("Coefs.txt")
 
 for i in 1:15
-    SZ, Neg = Run(N, hz, Jxy, Jz, A[i+10, :], tlist, Spin, NTRAJ)
+    SZ, Neg = Run(N, hz, Jxy, Jz, A[i+2, :], tlist, Spin, NTRAJ)
 
     outfile1 = "results/S_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
     outfile2 = "results/NEG_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
