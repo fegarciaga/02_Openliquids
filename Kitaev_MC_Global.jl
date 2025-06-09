@@ -11,7 +11,14 @@ function Single_term(H, J, ind1, ind2, slist)
     return H
 end
 
-function Build_H(N, hz, Jxy, Jz, sx_list, sy_list, sz_list)
+function Single_Heisenberg(H, Jxy, Jz, ind1, ind2, sx_list, sy_list, sz_list)
+    H += Jz * sz_list[ind1]*sz_list[ind2]
+    H += Jxy * sx_list[ind1]*sz_list[ind2]
+    H += Jxy * sy_list[ind2]*sy_list[ind2]
+    return H
+end
+
+function Build_H(N, hz, Jxy, Jz, θ, sx_list, sy_list, sz_list)
     H = 0
     for n in 1:N
         H += -hz * sz_list[n]
@@ -19,17 +26,35 @@ function Build_H(N, hz, Jxy, Jz, sx_list, sy_list, sz_list)
         H += -hz * sy_list[n]
     end
 
-    H = Single_term(H, Jxy, 1, 2, sx_list)
-    H = Single_term(H, Jxy, 2, 3, sy_list)
-    H = Single_term(H, Jxy, 3, 4, sx_list)
-    H = Single_term(H, Jxy, 4, 5, sy_list)
-    H = Single_term(H, Jz, 5, 6, sz_list)
-    H = Single_term(H, Jxy, 6, 7, sx_list)
-    H = Single_term(H, Jxy, 7, 8, sy_list)
-    H = Single_term(H, Jxy, 8, 9, sx_list)
-    H = Single_term(H, Jxy, 9, 10, sy_list)
-    H = Single_term(H, Jz, 3, 8, sz_list)
-    H = Single_term(H, Jz, 1, 10, sz_list)
+    # Kitaev like terms
+    Jkxy = Jxy*cos(θ)
+    Jkz = Jz*cos(θ)
+    H = Single_term(H, Jkxy, 1, 2, sx_list)
+    H = Single_term(H, Jkxy, 2, 3, sy_list)
+    H = Single_term(H, Jkxy, 3, 4, sx_list)
+    H = Single_term(H, Jkxy, 4, 5, sy_list)
+    H = Single_term(H, Jkz, 5, 6, sz_list)
+    H = Single_term(H, Jkxy, 6, 7, sx_list)
+    H = Single_term(H, Jkxy, 7, 8, sy_list)
+    H = Single_term(H, Jkxy, 8, 9, sx_list)
+    H = Single_term(H, Jkxy, 9, 10, sy_list)
+    H = Single_term(H, Jkz, 3, 8, sz_list)
+    H = Single_term(H, Jkz, 1, 10, sz_list)
+
+    # Heisenberg like terms
+    Jhxy = Jxy*sin(θ)
+    Jhz = Jz*sin(θ)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 1, 2, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 2, 3, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 3, 4, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 4, 5, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 5, 6, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 6, 7, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 7, 8, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 8, 9, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 9, 10, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 3, 8, sx_list, sy_list, sz_list)
+    H = Single_Heisenberg(H, Jhxy, Jhz, 1, 10, sx_list, sy_list, sz_list)
 
     return H
 end
@@ -87,7 +112,7 @@ function Construct_collapse(H, S, A)
     return C
 end
 
-function Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
+function Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)
     D_spin = Int(2 * spin + 1)
     si = to_sparse(qeye(D_spin) |> x -> Qobj(Matrix{ComplexF64}(x)))
     sx, sy, sz = Build_spinops(spin)
@@ -101,8 +126,8 @@ function Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
     P_plus1 = (I + Wp1) / 2
     P_plus2 = (I + Wp2) / 2
 
-    H = Build_H(N, hz, Jxy, Jz, sx_list, sy_list, sz_list)
-    H_b = Build_H(N, 0, Jxy, Jz, sx_list, sy_list, sz_list)
+    H = Build_H(N, hz, Jxy, Jz, θ, sx_list, sy_list, sz_list)
+    H_b = Build_H(N, 0, Jxy, Jz, θ, sx_list, sy_list, sz_list)
 
     c_list = []
     SX = sx_list[1]
@@ -177,29 +202,42 @@ function Build_single(theta, phi, sx, sy, sz)
     return ekets[1]
 end
 
-function Run(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
-    expval, states = Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)   
-    C_half = Vector{Bool}(vcat(ones(Int, div(N, 2)), zeros(Int, div(N, 2))))
+function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
+    Neg = zeros(9,4)
+    Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
+    for i in 1:9
+        tlist = range(0, stop = 0.02*Simulation_time[i], length=Simulation_time[i])
+        expval, states = Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)   
+        C_half1 = Vector{Bool}(vcat(ones(Int, 5), zeros(Int, 5)))
+        C_half2 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 7)))
+        C_half3 = Vector{Bool}(vcat(ones(Int, 2), zeros(Int, 8)))
+        C_half4 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 4), ones(Int, 3)))
         
-    ρ = states[1][1]*states[1][1]'
+        ρ = states[1][1]*states[1][1]'
 
-    for i in 1:(NTRAJ-1)
-        ρ += states[i+1][1]*states[i+1][1]'
+        for i in 1:(NTRAJ-1)
+            ρ += states[i+1][1]*states[i+1][1]'
+        end
+    
+        ρ/=NTRAJ
+    
+        ρ_pt = partial_transpose(ρ, C_half1)
+        Neg[i,1] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_pt = partial_transpose(ρ, C_half2)
+        Neg[i,2] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_pt = partial_transpose(ρ, C_half3)
+        Neg[i,3] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_pt = partial_transpose(ρ, C_half4)
+        Neg[i,4] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
     end
-    
-    ρ/=NTRAJ
-    
-    ρ_pt = partial_transpose(ρ, C_half)
-    Neg = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
     
     return expval, Neg
 end
 
-tlist = range(0, stop=1000, length=50000)
-
 N = parse(Int64, ARGS[1])
 hz = parse(Float64, ARGS[2])
 Jxy = parse(Float64, ARGS[3])
+θ = parse(Float64, ARGS[4])
 Jz = 1
 Spin = 0.5
 NTRAJ = 1000
@@ -209,8 +247,8 @@ A = readdlm("Coefs.txt")
 for i in 1:15
     SZ, Neg = Run(N, hz, Jxy, Jz, A[i+2, :], tlist, Spin, NTRAJ)
 
-    outfile1 = "results/S_Global_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
-    outfile2 = "results/NEG__Global_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
+    outfile1 = "results/S_Global_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz_$(θ)_theta.txt"
+    outfile2 = "results/NEG__Global_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz_$(θ)_theta.txt"
 
     writedlm(outfile1, real.(SZ))
     writedlm(outfile2, real.(Neg))
