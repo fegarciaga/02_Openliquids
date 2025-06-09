@@ -173,24 +173,36 @@ function Build_single(theta, phi, sx, sy, sz)
     return ekets[1]
 end
 
-function Run(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
-    expval, states= Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
-    C_half = Vector{Bool}(vcat(ones(Int, div(N, 2)), zeros(Int, div(N, 2))))
+function Run(N, hz, Jxy, Jz, A, spin, NTRAJ)
+    Neg = zeros(9, 4)
+    Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
+    for i in 1:9
+        tlist = range(0, stop = 0.02*Simulation_time[i], length=Simulation_time[i])
+        expval, states= Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
+        C_half1 = Vector{Bool}(vcat(ones(Int, 5), zeros(Int, 5)))
+        C_half2 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 7)))
+        C_half3 = Vector{Bool}(vcat(ones(Int, 2), zeros(Int, 8)))
+        C_half4 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 4), ones(Int, 3)))
 
-    ρ = states[1][1]*states[1][1]'
+        ρ = states[1][1]*states[1][1]'
 
-    for i in 1:(NTRAJ-1)
-        ρ += states[i+1][1]*states[i+1][1]'
+        for i in 1:(NTRAJ-1)
+            ρ += states[i+1][1]*states[i+1][1]'
+        end
+        ρ/=NTRAJ
+
+        ρ_pt = partial_transpose(ρ, C_half1)
+        Neg[i,0] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_pt = partial_transpose(ρ, C_half2)
+        Neg[i,1] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_pt = partial_transpose(ρ, C_half3)
+        Neg[i,2] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_pt = partial_transpose(ρ, C_half4)
+        Neg[i,3] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
     end
-    ρ/=NTRAJ
-
-    ρ_pt = partial_transpose(ρ, C_half)
-    Neg = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
 
     return expval, Neg
 end
-
-tlist = range(0, stop=1000, length=50000)
 
 N = parse(Int64, ARGS[1])
 hz = parse(Float64, ARGS[2])
@@ -202,7 +214,7 @@ NTRAJ = 1000
 A = readdlm("Coefs.txt")
 
 for i in 1:15
-    SZ, Neg = Run(N, hz, Jxy, Jz, A[i+2, :], tlist, Spin, NTRAJ)
+    SZ, Neg = Run(N, hz, Jxy, Jz, A[i+2, :], Spin, NTRAJ)
 
     outfile1 = "results/S_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
     outfile2 = "results/NEG_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
