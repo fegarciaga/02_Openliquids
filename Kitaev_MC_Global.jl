@@ -205,6 +205,7 @@ end
 function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
     Neg = zeros(9,4)
     Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
+    expval = 0
     for i in 1:9
         tlist = range(0, stop = 0.02*Simulation_time[i], length=Simulation_time[i])
         expval, states = Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)   
