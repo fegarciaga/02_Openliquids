@@ -202,7 +202,7 @@ function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
     Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
     expval = 0
     for i in 1:9
-        tlist = range(0, stop = 0.02*Simulation_time[i], length=Simulation_time[i])
+        tlist = range(0, stop = 0.05*Simulation_time[i], length=Simulation_time[i])
         expval, states= Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)
         C_half1 = Vector{Bool}(vcat(ones(Int, 5), zeros(Int, 5)))
         C_half2 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 7)))
