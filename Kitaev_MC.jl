@@ -198,16 +198,16 @@ function Build_single(theta, phi, sx, sy, sz)
 end
 
 function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
-    Neg = zeros(9, 4)
+    Neg = zeros(9, 2)
     Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
     expval = 0
     for i in 1:9
         tlist = range(0, stop = 0.02*Simulation_time[i], length=Simulation_time[i])
         expval, states= Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)
-        C_half1 = Vector{Bool}(vcat(ones(Int, 5), zeros(Int, 5)))
-        C_half2 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 7)))
-        C_half3 = Vector{Bool}(vcat(ones(Int, 2), zeros(Int, 8)))
-        C_half4 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 4), ones(Int, 3)))
+        # The idea now is to check Takei's prediction on the localization of entanglement in loops
+        # according tothat idea C_half1 shouldn't present entanglement but C_half2 should
+        C_half1 = (1,2,3,4,5)
+        C_half2 = (1,2,3,8,9,10)
 
         ρ = states[1][1]*states[1][1]'
 
@@ -216,14 +216,17 @@ function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
         end
         ρ/=NTRAJ
 
-        ρ_pt = partial_transpose(ρ, C_half1)
+        # Here we compute the partial trace and then we compute the partial transpose to check for many body entanglement
+        C_1 = Vector{Bool}(vcat(ones(Int, 2), zeros(Int, 3)))
+        C_2 =  Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 3)))
+        ρ_p = ptrace(ρ, C_half1)
+        ρ_pt = partial_transpose(ρ_p, C_1)
         Neg[i,1] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
-        ρ_pt = partial_transpose(ρ, C_half2)
+        println(Neg[i,1])
+        ρ_p = ptrace(ρ, C_half2)
+        ρ_pt = partial_transpose(ρ_p, C_2)
         Neg[i,2] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
-        ρ_pt = partial_transpose(ρ, C_half3)
-        Neg[i,3] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
-        ρ_pt = partial_transpose(ρ, C_half4)
-        Neg[i,4] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        println(Neg[i,2])
     end
 
     return expval, Neg
