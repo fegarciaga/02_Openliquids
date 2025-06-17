@@ -203,7 +203,7 @@ function Build_single(theta, phi, sx, sy, sz)
 end
 
 function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
-    Neg = zeros(9,2)
+    Neg = zeros(9,3)
     Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
     expval = 0
     for i in 1:9
@@ -222,6 +222,7 @@ function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
         # Here we compute the partial trace and then we compute the partial transpose to check for many body entanglement
         C_1 = Vector{Bool}(vcat(ones(Int, 2), zeros(Int, 3)))
         C_2 =  Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 3)))
+        C_half3 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 4), ones(Int, 3)))
         ρ_p = ptrace(ρ, C_half1)
         ρ_pt = partial_transpose(ρ_p, C_1)
         Neg[i,1] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
@@ -230,6 +231,8 @@ function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
         ρ_pt = partial_transpose(ρ_p, C_2)
         Neg[i,2] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
         println(Neg[i,2])
+        ρ_pt = partial_transpose(ρ, C_half3)
+        Neg[i,3] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
     end
 
     
