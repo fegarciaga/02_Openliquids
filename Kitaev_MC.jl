@@ -18,7 +18,7 @@ function Single_Heisenberg(H, Jxy, Jz, ind1, ind2, sx_list, sy_list, sz_list)
     return H
 end
 
-function Build_H(N, hz, Jxy, Jz, θ, sx_list, sy_list, sz_list)
+function Build_H(N, hz, Jxy, Jz, sx_list, sy_list, sz_list)
     H = 0
     for n in 1:N
         H += -hz * sz_list[n]
@@ -27,35 +27,17 @@ function Build_H(N, hz, Jxy, Jz, θ, sx_list, sy_list, sz_list)
     end
 
     # Kitaev like terms
-    Jkxy = Jxy*cos(θ)
-    Jkz = Jz*cos(θ)
-    H = Single_term(H, Jkxy, 1, 2, sx_list)
-    H = Single_term(H, Jkxy, 2, 3, sy_list)
-    H = Single_term(H, Jkxy, 3, 4, sx_list)
-    H = Single_term(H, Jkxy, 4, 5, sy_list)
-    H = Single_term(H, Jkz, 5, 6, sz_list)
-    H = Single_term(H, Jkxy, 6, 7, sx_list)
-    H = Single_term(H, Jkxy, 7, 8, sy_list)
-    H = Single_term(H, Jkxy, 8, 9, sx_list)
-    H = Single_term(H, Jkxy, 9, 10, sy_list)
-    H = Single_term(H, Jkz, 3, 8, sz_list)
-    H = Single_term(H, Jkz, 1, 10, sz_list)
-
-    # Heisenberg like terms
-    Jhxy = Jxy*sin(θ)
-    Jhz = Jz*sin(θ)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 1, 2, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 2, 3, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 3, 4, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 4, 5, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 5, 6, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 6, 7, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 7, 8, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 8, 9, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 9, 10, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 3, 8, sx_list, sy_list, sz_list)
-    H = Single_Heisenberg(H, Jhxy, Jhz, 1, 10, sx_list, sy_list, sz_list)
-
+    H = Single_term(H, Jxy, 1, 2, sx_list)
+    H = Single_term(H, Jxy, 2, 3, sy_list)
+    H = Single_term(H, Jxy, 3, 4, sx_list)
+    H = Single_term(H, Jxy, 4, 5, sy_list)
+    H = Single_term(H, Jz, 5, 6, sz_list)
+    H = Single_term(H, Jxy, 6, 7, sx_list)
+    H = Single_term(H, Jxy, 7, 8, sy_list)
+    H = Single_term(H, Jxy, 8, 9, sx_list)
+    H = Single_term(H, Jxy, 9, 10, sy_list)
+    H = Single_term(H, Jz, 3, 8, sz_list)
+    H = Single_term(H, Jz, 1, 10, sz_list)
     return H
 end
 
@@ -106,7 +88,7 @@ function Construct_collapse(H, S, A)
     C += 0.1 * A[1] * S
     for i in 1:4
         Aux2 = Commutator(H, Aux1)
-        C += 0.1 * A[i+1] * Aux2
+        C += 0.1 * (-1)^i * A[i+1] * Aux2
         Aux1 = Aux2
     end
     # Elimiminate small elements 
@@ -133,38 +115,12 @@ function Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)
     c_list = []
     for n in 1:N
         push!(c_list, Construct_collapse(H_b, sx_list[n], A))
-        #push!(c_list, Construct_collapse(H, sy_list[n], A))
-        #push!(c_list, Construct_collapse(H, sz_list[n], A))
+        push!(c_list, Construct_collapse(H, sy_list[n], A))
+        push!(c_list, Construct_collapse(H, sz_list[n], A))
     end
-
-    theta = π / 2
-    phi = 0
-
-    psi_list = []
-    for i in 1:N
-        if i % 2 == 0
-            push!(psi_list, Build_single(theta, phi, sx, sy, sz))
-        else
-            push!(psi_list, Build_single(π - theta, phi + π, sx, sy, sz))
-        end
-    end
-
-    psi_init = tensor(psi_list...)
-
-    # now the low rank implementation
-    # number of the low rank states
-    M = N+1
-
-    ϕ = Vector{QuantumObject{KetQuantumObject,Dimensions{M - 1,NTuple{M - 1,Space}},Vector{ComplexF64}}}(undef, M)
     evals, ekets = eigenstates(H, sparse = true)
 
     psi_init = ekets[1]
-
-    ϕ[1] = P_plus1*psi_init
-    ϕ[1] /=norm(ϕ[1])
-    ϕ[1] = P_plus2*ϕ[1]
-    ϕ[1] /= norm(ϕ[1])
-
     sz_list = vcat(sz_list, sy_list, sx_list)
 
     # Include the correlation effects
@@ -179,14 +135,14 @@ function Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)
     push!(sz_list, Wp2)
     push!(sz_list, H)
 
-    println(expect(Wp1, ϕ[1]))
-    println(expect(Wp2, ϕ[1]))
+    println(expect(Wp1, psi_init))
+    println(expect(Wp2, psi_init))
 
     println("Objects calculated, Initial wavefunction computed")
 
     println("Ready to solve lowrank approximation")
 
-    sol_lr = mcsolve(H, ϕ[1], tlist, c_list; e_ops = sz_list, ntraj=NTRAJ);
+    sol_lr = mcsolve(H, psi_init, tlist, c_list; e_ops = sz_list, ntraj=NTRAJ);
 
     return sol_lr.expect, sol_lr.states
 end
@@ -197,16 +153,15 @@ function Build_single(theta, phi, sx, sy, sz)
     return ekets[1]
 end
 
-function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
-    Neg = zeros(9, 3)
+function Run(N, hz, Jxy, Jz, A, spin, NTRAJ, filename)
     Simulation_time = [5, 12, 50, 125, 500, 1250, 5000, 12500, 50000]
     expval = 0
     for i in 1:9
         tlist = range(0, stop = 0.05*Simulation_time[i], length=Simulation_time[i])
-        expval, states= Integrate(N, hz, Jxy, Jz, θ, A, tlist, spin, NTRAJ)
+        expval, states= Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
         # The idea now is to check Takei's prediction on the localization of entanglement in loops
         # according tothat idea C_half1 shouldn't present entanglement but C_half2 should
-        C_half1 = (1,2,3,4,5)
+        C_half1 = (1,2,8,9,10)
         C_half2 = (1,2,3,8,9,10)
 
         ρ = states[1][1]*states[1][1]'
@@ -217,28 +172,29 @@ function Run(N, hz, Jxy, Jz, θ, A, spin, NTRAJ)
         ρ/=NTRAJ
 
         # Here we compute the partial trace and then we compute the partial transpose to check for many body entanglement
-        C_1 = Vector{Bool}(vcat(ones(Int, 2), zeros(Int, 3)))
-        C_2 =  Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 3)))
-        C_half3 = Vector{Bool}(vcat(ones(Int, 3), zeros(Int, 4), zeros(Int, 3)))
         ρ_p = ptrace(ρ, C_half1)
-        ρ_pt = partial_transpose(ρ_p, C_1)
-        Neg[i,1] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
-        println(Neg[i,1])
+        ρ_julia = Matrix{ComplexF64}(ρ_p)
+        aux_filename = "_"*string(i)*"_"*filename
+        outfileaux = "results/M1"*aux_filename*"_r.txt"
+        writedlm(outfileaux, real.(ρ_julia))
+        outfileaux = "results/M1"*aux_filename*"_i.txt"
+        writedlm(outfileaux, imag.(ρ_julia))
+
+
         ρ_p = ptrace(ρ, C_half2)
-        ρ_pt = partial_transpose(ρ_p, C_2)
-        Neg[i,2] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
-        println(Neg[i,2])
-        ρ_pt = partial_transpose(ρ, C_half3)
-        Neg[i,3] = log(real(tr(sqrtm(ρ_pt'*ρ_pt))))
+        ρ_julia = Matrix{ComplexF64}(ρ_p)
+        outfileaux = "results/M2"*aux_filename*"_r.txt"
+        writedlm(outfileaux, real.(ρ_julia))
+        outfileaux = "results/M2"*aux_filename*"_i.txt"
+        writedlm(outfileaux, imag.(ρ_julia))
     end
 
-    return expval, Neg
+    return expval
 end
 
 N = parse(Int64, ARGS[1])
 hz = parse(Float64, ARGS[2])
 Jxy = parse(Float64, ARGS[3])
-θ = parse(Float64, ARGS[4])
 Jz = 1
 Spin = 0.5
 NTRAJ = 1000
@@ -246,11 +202,10 @@ NTRAJ = 1000
 A = readdlm("Coefs.txt")
 
 for i in 1:15
-    SZ, Neg = Run(N, hz, Jxy, Jz, θ, A[i+2, :], Spin, NTRAJ)
+    SZ = Run(N, hz, Jxy, Jz, A[i+2, :], Spin, NTRAJ, string(i)*"_theta"*string(θ))
 
-    outfile1 = "results/S_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz_$(θ)_theta.txt"
-    outfile2 = "results/NEG_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz_$(θ)_theta.txt"
+    outfile1 = "results/S_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
+    outfile2 = "results/NEG_KSL_$(N)_N_$(i)_T_$(hz)_h_$(Jxy)_Jxy_$(Jz)_Jz.txt"
 
     writedlm(outfile1, real.(SZ))
-    writedlm(outfile2, real.(Neg))
 end
