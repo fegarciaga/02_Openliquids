@@ -131,7 +131,7 @@ function Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
 
     println("Objects calculated, Initial wavefunction computed. Starting MC unravelling")
 
-    sol_lr = mcsolve(H, psi_init, tlist, c_list; ntraj=NTRAJ, saveat = saveat);
+    sol_lr = mcsolve(H, psi_init, tlist, c_list; ntraj=NTRAJ, saveat = saveat, progress_bar = false);
 
     return e_ops, sol_lr.states
 end
@@ -161,17 +161,22 @@ function Run(N, hz, Jxy, Jz, A, spin, NTRAJ, filename)
     SAVE_STRIDE = 20
     saveat = tlist[1:SAVE_STRIDE:end]
     expops, states= Integrate(N, hz, Jxy, Jz, A, tlist, spin, NTRAJ)
-    println(size(states[1][:]))
+    println("Done with MC simulation"))
     # States are being saved every few time steps
     # Observables are computed as postprocessing operation
     Nobs = 2000
     W = zeros(Nobs)
     SzSz = zeros(Nobs)
 
-    for i in 1:Nobs
-        for j in 1:NTRAJ
-            W[i] += real(expect(expops[1], states[j][i]))
-            SzSz[i] += real(expect(expops[2], states[j][i]))
+    Wp = expops[1]
+    Sz = expops[2]
+
+    for j in 1:NTRAJ
+        println(j)
+        ψtraj = states[j]
+        for i in 1:Nobs
+            W[i] += real(expect(Wp, ψtraj[i]))
+            SzSz[i] += real(expect(expops[2], ψtraj[i]))
         end
         W[i] /= NTRAJ
         SzSz[i] /= NTRAJ
