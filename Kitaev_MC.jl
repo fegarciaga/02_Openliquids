@@ -176,11 +176,12 @@ function Run(N, hz, Jxy, Jz, A, spin, NTRAJ, filename)
         ψtraj = states[j]
         for i in 1:Nobs
             W[i] += real(expect(Wp, ψtraj[i]))
-            SzSz[i] += real(expect(expops[2], ψtraj[i]))
+            SzSz[i] += real(expect(Sz, ψtraj[i]))
         end
-        W[i] /= NTRAJ
-        SzSz[i] /= NTRAJ
     end
+
+    W ./= NTRAJ
+    SzSz./= NTRAJ
 
     println("Done computing observables")
 
