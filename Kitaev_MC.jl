@@ -171,17 +171,34 @@ function Run(N, hz, Jxy, Jz, A, spin, NTRAJ, filename)
     Wp = expops[1]
     Sz = expops[2]
 
-    for j in 1:NTRAJ
-        println(j)
+    nthreads = Threads.nthreads()
+
+    W_thr    = [zeros(Nobs) for _ in 1:nthreads]
+    SzSz_thr = [zeros(Nobs) for _ in 1:nthreads]
+
+    @threads for j in 1:NTRAJ
+        tid = threadid()
         ψtraj = states[j]
-        for i in 1:Nobs
-            W[i] += real(expect(Wp, ψtraj[i]))
-            SzSz[i] += real(expect(Sz, ψtraj[i]))
+
+        Wloc    = W_thr[tid]
+        SzSzloc = SzSz_thr[tid]
+
+        @inbounds for i in 1:Nobs
+            Wloc[i]    += real(expect(Wp, ψtraj[i]))
+            SzSzloc[i] += real(expect(Sz, ψtraj[i]))
         end
     end
 
-    W ./= NTRAJ
-    SzSz./= NTRAJ
+    # Reduction
+    W    .= 0.0
+    SzSz .= 0.0
+    for t in 1:nthreads
+        W    .+= W_thr[t]
+        SzSz .+= SzSz_thr[t]
+    end
+
+    W    ./= NTRAJ
+    SzSz ./= NTRAJ
 
     println("Done computing observables")
 
